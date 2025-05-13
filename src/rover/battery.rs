@@ -10,4 +10,7 @@ impl Battery {
     pub fn voltage_get(&self) -> f64 {
         self.max_voltage
     }
+    pub fn capacity_get(&self) -> f64 {
+        self.capacity
+    }
 }

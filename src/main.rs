@@ -76,10 +76,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("{resp:#?}");
 
 
+    let max_dist = rover.max_distance_get(exercises.fixed_capacity.state_of_charge);
+    println!("max_dist: {max_dist}");
 
+    let resp = client.post("http://localhost:8080/verify/fixed_capacity")
+        .json(&max_dist)
+        .send()
+        .await?
+        .json::<exercises::VerifyResponse>()
+        .await?;
 
-
-
+    println!("{resp:#?}");
 
 
 

@@ -13,7 +13,7 @@ pub struct MotorCommand<'a> {
 pub struct Motor {
     name: String,
     kv_rating: f64,
-    current_rating: f64,
+    pub current_rating: f64,
     wheel: wheel::Wheel,
 }
 
@@ -24,11 +24,14 @@ impl Motor {
     }
 
     pub fn ground_speed_set(&self, speed: f64) -> MotorCommand {
-        let voltage = self.wheel.ground_speed_to_rpm(speed) / self.kv_rating;
         MotorCommand {
             name: &self.name,
-            voltage
+            voltage: self.ground_speed_to_voltage(speed)
         }
+    }
+
+    pub fn ground_speed_to_voltage(&self, speed: f64) -> f64 {
+        self.wheel.ground_speed_to_rpm(speed) / self.kv_rating
     }
 }
 

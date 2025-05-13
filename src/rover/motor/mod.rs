@@ -5,7 +5,7 @@ mod wheel;
 #[derive(Serialize, Debug)]
 pub struct MotorCommand<'a> {
     name: &'a str,
-    voltage: f64
+    pub voltage: f64
 }
 
 
@@ -13,7 +13,7 @@ pub struct MotorCommand<'a> {
 pub struct Motor {
     name: String,
     kv_rating: f64,
-    pub current_rating: f64,
+    current_rating: f64,
     wheel: wheel::Wheel,
 }
 
@@ -32,6 +32,10 @@ impl Motor {
 
     pub fn ground_speed_to_voltage(&self, speed: f64) -> f64 {
         self.wheel.ground_speed_to_rpm(speed) / self.kv_rating
+    }
+
+    pub fn current_rating_get(&self) ->f64 {
+        self.current_rating
     }
 }
 

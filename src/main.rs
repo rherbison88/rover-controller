@@ -88,7 +88,17 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     println!("{resp:#?}");
 
+    let max_speed = rover.panel_only_max_speed_get(exercises.fixed_irradiance.value);
+    println!("max_speed: {max_speed}");
 
+    let resp = client.post("http://localhost:8080/verify/fixed_irradiance")
+        .json(&max_speed)
+        .send()
+        .await?
+        .json::<exercises::VerifyResponse>()
+        .await?;
+
+    println!("{resp:#?}");
 
     Ok(())
 }

@@ -49,14 +49,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     println!("{exercises:#?}\n\n");
 
-    let rover = client.get("http://localhost:8080/rover/config")
+    let rover_builder = client.get("http://localhost:8080/rover/config")
         .send()
         .await?
-        .json::<rover::Rover>()
+        .json::<rover::RoverBuilder>()
         .await?;
 
-    println!("{rover:#?}");
+    println!("{rover_builder:#?}");
 
+    let rover = rover_builder.build();
 
     let distance_cmd = rover.distance_travel(exercises.fixed_distance.value);
 

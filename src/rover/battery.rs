@@ -7,7 +7,7 @@ pub struct Battery {
 }
 
 impl Battery {
-    pub fn voltage_get(&self) -> f64 {
+    pub fn max_voltage_get(&self) -> f64 {
         self.max_voltage
     }
     pub fn capacity_get(&self) -> f64 {

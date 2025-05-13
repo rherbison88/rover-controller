@@ -16,12 +16,12 @@ pub struct Rover {
     motors: Vec<motor::Motor>,
     batteries: Vec<battery::Battery>,
     solar_panels: Vec<solar_panel::SolarPanel>,
-    limiting_motor: (usize, f64),
+    limiting_motor_idx: usize
 }
 
 #[derive(Deserialize, Debug)]
 pub struct RoverBuilder {
-    motors: Vec<motor::Motor>,
+    motors: Vec<motor::MotorBuilder>,
     batteries: Vec<battery::Battery>,
     solar_panels: Vec<solar_panel::SolarPanel>,
 }
@@ -29,52 +29,31 @@ pub struct RoverBuilder {
 impl RoverBuilder {
     pub fn build(self) -> Rover {
         const SEARCH_FIXED_SPEED: f64 = 100.0;
-        struct LimitingMotorSearch {
-            idx: isize, // reference to the individual motor
-            speed: f64, // ground speed produced from fixed voltage passed during search
-            total_power: f64, // power used by all motors searched for a fixed speed
-            idx_found: usize
-        }
 
-        let searcher_init =
-            LimitingMotorSearch {
-                idx: -1,
-                speed: f64::MAX,
-                total_power: 0.0,
-                idx_found: 0
-            };
+        /* find the total power for a given fixed ground travel speed */
+        let total_power = self.motors.iter().fold(0.0, |acc, m| acc + m.power_at_ground_speed(SEARCH_FIXED_SPEED));
 
-        let found: LimitingMotorSearch = self.motors.iter().fold(searcher_init, |acc, m| {
-            /* loop through using a fixed voltage,
-             * and find the motor which produces the lowest ground speed */
-            let idx = acc.idx + 1;
-            let total_power = acc.total_power + (m.current_rating_get() * m.ground_speed_to_voltage(SEARCH_FIXED_SPEED));
-            let speed = m.ground_speed_get(10.0);
-            if speed < acc.speed {
-                LimitingMotorSearch {
-                    idx,
-                    speed,
-                    total_power,
-                    idx_found: idx.try_into().unwrap()
-                }
-            } else {
-                LimitingMotorSearch {
-                    idx,
-                    speed: acc.speed,
-                    total_power,
-                    idx_found: acc.idx_found
-                }
-            }
+        /* use it to find the power ratio of each motor at a fixed ground travel speed, and use
+         * that value to build the MotorBuilder objects into Motor objects */
+        let built_motors: Vec<motor::Motor> = self.motors.into_iter().map(|m| {
+            let power_ratio = m.power_at_ground_speed(SEARCH_FIXED_SPEED) / total_power;
+            m.build(power_ratio)
+        }).collect();
+
+        /* Find the index of the limiting motor. The limiting motor is the motor with the highest
+         * voltage to ground speed ratio, as this motor will limit our top speed based on the max
+         * battery votage */
+        let (_, idx, _) = built_motors.iter().fold((-1, 0, 0.0), |acc, m| {
+            let idx = acc.0 + 1;
+            let v = m.ground_speed_to_voltage(SEARCH_FIXED_SPEED);
+            if v > acc.2 { (idx, idx.try_into().unwrap(), v) } else { (idx, acc.1, acc.2) }
         });
 
-        let fixed_speed_power = self.motors[found.idx_found].current_rating_get() * self.motors[found.idx_found].ground_speed_to_voltage(SEARCH_FIXED_SPEED);
-        let limiting_pow_ratio = fixed_speed_power / found.total_power;
-
         Rover {
-            motors: self.motors,
+            motors: built_motors,
             batteries: self.batteries,
             solar_panels: self.solar_panels,
-            limiting_motor: (found.idx_found, limiting_pow_ratio)
+            limiting_motor_idx: idx
         }
     }
 }
@@ -107,12 +86,14 @@ impl Rover {
 
     fn max_speed_get(&self, voltage: f64) -> f64 {
         /* return the lowest max speed of all motor/wheel pairs */
-        self.motors[self.limiting_motor.0].ground_speed_get(voltage)
+        self.motors[self.limiting_motor_idx].ground_speed_get(voltage)
     }
 
     fn power_to_speed(&self, power: f64) -> f64 {
-        let limiting_motor = &self.motors[self.limiting_motor.0];
-        let v = (self.limiting_motor.1 * power) / limiting_motor.current_rating_get();
+        let limiting_motor = &self.motors[self.limiting_motor_idx];
+        let v = (limiting_motor.fixed_speed_power_ratio_get() * power) / limiting_motor.current_rating_get();
+        let max_v = self.batteries[0].max_voltage_get();
+        let v = if v < max_v { v } else { max_v };
         limiting_motor.ground_speed_get(v)
     }
 
@@ -132,6 +113,6 @@ impl Rover {
     }
 
     fn batt_voltage_get(&self, state_of_charge: f64) -> f64 {
-        (self.batteries[0].voltage_get() * state_of_charge) / 100.0
+        (self.batteries[0].max_voltage_get() * state_of_charge) / 100.0
     }
 }

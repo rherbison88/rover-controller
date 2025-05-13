@@ -41,21 +41,47 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     println!("{health:#?}\n\n");
 
-    let resp = client.get("http://localhost:8080/exercises")
+    let exercises = client.get("http://localhost:8080/exercises")
         .send()
         .await?
         .json::<exercises::Exercises>()
         .await?;
 
-    println!("{resp:#?}\n\n");
+    println!("{exercises:#?}\n\n");
 
-    let resp = client.get("http://localhost:8080/rover/config")
+    let rover = client.get("http://localhost:8080/rover/config")
         .send()
         .await?
         .json::<rover::Rover>()
         .await?;
 
+    println!("{rover:#?}");
+
+
+    let distance_cmd = rover.distance_travel(exercises.fixed_distance.value);
+
+    println!("{distance_cmd:#?}");
+
+
+
+    let resp = client.post("http://localhost:8080/verify/fixed_distance")
+        .json(&distance_cmd)
+        .send()
+        .await?
+        .json::<exercises::VerifyResponse>()
+        .await?;
+
+
+
     println!("{resp:#?}");
+
+
+
+
+
+
+
+
 
     Ok(())
 }

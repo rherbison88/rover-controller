@@ -1,30 +1,35 @@
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
-struct FixedDistance {
-    value: f64
+pub struct FixedDistance {
+    pub value: f64
 }
 
 #[derive(Deserialize, Debug)]
-struct FixedCapacity {
-    state_of_charge: f64
+pub struct FixedCapacity {
+    pub state_of_charge: f64
 }
 
 #[derive(Deserialize, Debug)]
-struct FixedIrradiance {
-    value: f64
+pub struct FixedIrradiance {
+    pub value: f64
 }
 
 #[derive(Deserialize, Debug)]
-struct VariableIrradiance {
-    peak_value: f64
+pub struct VariableIrradiance {
+    pub peak_value: f64
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Exercises {
-    fixed_distance: FixedDistance,
-    fixed_capacity: FixedCapacity,
-    fixed_irradiance: FixedIrradiance,
-    variable_irradiance: VariableIrradiance,
+    pub fixed_distance: FixedDistance,
+    pub fixed_capacity: FixedCapacity,
+    pub fixed_irradiance: FixedIrradiance,
+    pub variable_irradiance: VariableIrradiance,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct VerifyResponse {
+    pub code: String,
+    pub message: String,
+}

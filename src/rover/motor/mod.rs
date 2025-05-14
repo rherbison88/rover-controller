@@ -65,6 +65,10 @@ impl Motor {
         speed / self.ground_speed_to_voltage_ratio
     }
 
+    pub fn ground_speed_to_power(&self, speed: f64) -> f64 {
+        self.ground_speed_to_voltage(speed) * self.current_rating
+    }
+
     pub fn ground_speed_set(&self, speed: f64) -> MotorCommand {
         MotorCommand {
             name: &self.name,

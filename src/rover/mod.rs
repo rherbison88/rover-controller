@@ -84,12 +84,21 @@ impl Rover {
         self.power_to_speed(power)
     }
 
+    pub fn saturated_power_get(&self) -> f64 {
+        let max_v = self.batteries[0].max_voltage_get();
+        self.motors.iter().fold(0.0, |acc, m| acc + m.ground_speed_to_power(self.max_speed_get(max_v)))
+    }
+
+    pub fn power_per_irradiance_get(&self) -> f64 {
+        self.solar_panels.iter().fold(0.0, |acc, sp| acc + sp.power_per_irradiance_get())
+    }
+
     fn max_speed_get(&self, voltage: f64) -> f64 {
         /* return the lowest max speed of all motor/wheel pairs */
         self.motors[self.limiting_motor_idx].ground_speed_get(voltage)
     }
 
-    fn power_to_speed(&self, power: f64) -> f64 {
+    pub fn power_to_speed(&self, power: f64) -> f64 {
         let limiting_motor = &self.motors[self.limiting_motor_idx];
         let v = (limiting_motor.fixed_speed_power_ratio_get() * power) / limiting_motor.current_rating_get();
         let max_v = self.batteries[0].max_voltage_get();
@@ -104,9 +113,9 @@ impl Rover {
             acc + (m.ground_speed_to_voltage(speed) * m.current_rating_get())
         });
 
-        let batt_capacity_sum = self.batteries.iter().fold(0.0, |acc, b| acc + b.capacity_get());
-        (batt_capacity_sum * 36.0 * state_of_charge) / power_sum
+        (self.batt_capacity_get() * 36.0 * state_of_charge) / power_sum
     }
+
 
     fn speed_set(&self, speed: f64) -> Vec<motor::MotorCommand> {
         self.motors.iter().map(|m| m.ground_speed_set(speed)).collect()
@@ -114,5 +123,9 @@ impl Rover {
 
     fn batt_voltage_get(&self, state_of_charge: f64) -> f64 {
         (self.batteries[0].max_voltage_get() * state_of_charge) / 100.0
+    }
+
+    pub fn batt_capacity_get(&self) -> f64 {
+        self.batteries.iter().fold(0.0, |acc, b| acc + b.capacity_get())
     }
 }

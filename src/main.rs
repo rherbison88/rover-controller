@@ -1,10 +1,11 @@
-use std::error::Error;
+use log::debug;
 use serde::Deserialize;
+use std::error::Error;
 
 mod exercises;
 mod rover;
 
-const MARTIAN_DAY_S: f64 = 3600.0*24.0 + 60.0*37.0 + 22.0;
+const MARTIAN_DAY_S: f64 = 3600.0 * 24.0 + 60.0 * 37.0 + 22.0;
 
 #[derive(Deserialize)]
 struct HealthResp {
@@ -15,8 +16,6 @@ struct HealthResp {
 struct Health {
     status: Result<(), Box<dyn Error>>,
 }
-
-
 
 impl From<HealthResp> for Health {
     fn from(value: HealthResp) -> Self {
@@ -31,90 +30,87 @@ impl From<HealthResp> for Health {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    env_logger::init();
 
     let client = reqwest::Client::new();
 
-    let health: Health = client.get("http://localhost:8080/health")
+    let health: Health = client
+        .get("http://localhost:8080/health")
         .send()
         .await?
         .json::<HealthResp>()
         .await?
         .into();
+    debug!("{health:#?}\n\n");
 
-    println!("{health:#?}\n\n");
+    if health.status.is_err() {
+        /* we will return an error before getting here... */
+        panic!("Server is not running");
+    }
 
-    let exercises = client.get("http://localhost:8080/exercises")
+    let exercises = client
+        .get("http://localhost:8080/exercises")
         .send()
         .await?
         .json::<exercises::Exercises>()
         .await?;
 
-    println!("{exercises:#?}\n\n");
+    debug!("{exercises:#?}\n\n");
 
-    let rover_builder = client.get("http://localhost:8080/rover/config")
+    let rover_builder = client
+        .get("http://localhost:8080/rover/config")
         .send()
         .await?
         .json::<rover::RoverBuilder>()
         .await?;
 
-    println!("{rover_builder:#?}");
+    debug!("{rover_builder:#?}\n\n");
 
     let rover = rover_builder.build();
 
     let distance_cmd = rover.distance_travel(exercises.fixed_distance.value);
-
-    println!("{distance_cmd:#?}");
-
-
-
-    let resp = client.post("http://localhost:8080/verify/fixed_distance")
+    println!("Fixed Distance Test: trying rover command = \n{distance_cmd:#?}");
+    let resp = client
+        .post("http://localhost:8080/verify/fixed_distance")
         .json(&distance_cmd)
         .send()
         .await?
         .json::<exercises::VerifyResponse>()
         .await?;
-
-
-
-    println!("{resp:#?}");
-
+    println!("{resp:#?}\n");
 
     let max_dist = rover.max_distance_get(exercises.fixed_capacity.state_of_charge);
-    println!("max_dist: {max_dist}");
-
-    let resp = client.post("http://localhost:8080/verify/fixed_capacity")
+    println!("Fixed Capacity Test: trying distance = {max_dist}");
+    let resp = client
+        .post("http://localhost:8080/verify/fixed_capacity")
         .json(&max_dist)
         .send()
         .await?
         .json::<exercises::VerifyResponse>()
         .await?;
-
-    println!("{resp:#?}");
+    println!("{resp:#?}\n");
 
     let max_speed = rover.panel_only_max_speed_get(exercises.fixed_irradiance.value);
-    println!("max_speed: {max_speed}");
-
-    let resp = client.post("http://localhost:8080/verify/fixed_irradiance")
+    println!("Fixed Irradiance Test: trying speed = {max_speed}");
+    let resp = client
+        .post("http://localhost:8080/verify/fixed_irradiance")
         .json(&max_speed)
         .send()
         .await?
         .json::<exercises::VerifyResponse>()
         .await?;
-
-    println!("{resp:#?}");
-
+    println!("{resp:#?}\n");
 
     let daily_dist = daily_distance_calc(&rover, exercises.variable_irradiance.peak_value);
-
-    let resp = client.post("http://localhost:8080/verify/variable_irradiance")
+    println!("Variable Irradiance Test: trying distance = {daily_dist}");
+    let resp = client
+        .post("http://localhost:8080/verify/variable_irradiance")
         .json(&daily_dist)
         .send()
         .await?
         .json::<exercises::VerifyResponse>()
         .await?;
-
-    println!("{resp:#?}");
-
+    println!("{resp:#?}\n");
 
     Ok(())
 }
@@ -133,7 +129,7 @@ fn daily_distance_calc(rover: &rover::Rover, peak_irradiance: f64) -> f64 {
      *
      * 2. Find the max energy the rover could consume in that time
      *     max_solar_energy_used = (max combined motor power * time for the same interval)
-     * 
+     *
      * 3. convert that to a distance (d1)
      * 4. calculated stored energy by subtracting max_solar_energy_used from total solar energy
      * 5. convert stored energy to state of charge and calculate distance as was done in the fixed
@@ -142,20 +138,18 @@ fn daily_distance_calc(rover: &rover::Rover, peak_irradiance: f64) -> f64 {
      *
      */
 
-    let ang_freq = (std::f64::consts::PI * 2.0)/MARTIAN_DAY_S;
+    let ang_freq = (std::f64::consts::PI * 2.0) / MARTIAN_DAY_S;
     let peak_power = peak_irradiance * rover.power_per_irradiance_get();
-    let time_end_of_radiation = MARTIAN_DAY_S/2.0;
+    let time_end_of_radiation = MARTIAN_DAY_S / 2.0;
 
     let time1_start = 0.0;
     let time1_end = time_end_of_radiation;
 
     /* time integral of power generated by the solar panels (providing energy) */
-    let solar_energy =
-        (-(peak_power)/ang_freq)*((time1_end*ang_freq).cos()) +
-        ((peak_power)/ang_freq)*((time1_start*ang_freq).cos());
+    let solar_energy = (-(peak_power) / ang_freq) * ((time1_end * ang_freq).cos())
+        + ((peak_power) / ang_freq) * ((time1_start * ang_freq).cos());
 
     let max_solar_energy_used = rover.saturated_power_get() * time_end_of_radiation;
-
 
     let dist_from_solar = {
         let mean_power = max_solar_energy_used / time_end_of_radiation;
@@ -168,6 +162,5 @@ fn daily_distance_calc(rover: &rover::Rover, peak_irradiance: f64) -> f64 {
     let soc = (100.0 * stored) / (rover.batt_capacity_get() * 3600.0);
     let dist_from_batt_stored = rover.max_distance_get(soc);
 
-    let total_dist = dist_from_solar + dist_from_batt_stored;
-    total_dist
+    dist_from_solar + dist_from_batt_stored
 }

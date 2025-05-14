@@ -1,23 +1,24 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 mod wheel;
 
 #[derive(Serialize, Debug)]
 pub struct MotorCommand<'a> {
     name: &'a str,
-    pub voltage: f64
+    pub voltage: f64,
 }
 
 #[derive(Debug)]
 pub struct Motor {
     name: String,
+    #[allow(unused)]
     kv_rating: f64,
     current_rating: f64,
+    #[allow(unused)]
     wheel: wheel::Wheel,
     ground_speed_to_voltage_ratio: f64,
-    fixed_speed_power_ratio: f64
+    fixed_speed_power_ratio: f64,
 }
-
 
 #[derive(Deserialize, Debug)]
 pub struct MotorBuilder {
@@ -72,8 +73,7 @@ impl Motor {
     pub fn ground_speed_set(&self, speed: f64) -> MotorCommand {
         MotorCommand {
             name: &self.name,
-            voltage: self.ground_speed_to_voltage(speed)
+            voltage: self.ground_speed_to_voltage(speed),
         }
     }
 }
-

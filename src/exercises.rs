@@ -2,22 +2,22 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct FixedDistance {
-    pub value: f64
+    pub value: f64,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct FixedCapacity {
-    pub state_of_charge: f64
+    pub state_of_charge: f64,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct FixedIrradiance {
-    pub value: f64
+    pub value: f64,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct VariableIrradiance {
-    pub peak_value: f64
+    pub peak_value: f64,
 }
 
 #[derive(Deserialize, Debug)]
@@ -30,6 +30,8 @@ pub struct Exercises {
 
 #[derive(Deserialize, Debug)]
 pub struct VerifyResponse {
+    #[allow(unused)]
     pub code: String,
+    #[allow(unused)]
     pub message: String,
 }

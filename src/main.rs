@@ -127,15 +127,10 @@ fn daily_distance_calc(rover: &rover::Rover, peak_irradiance: f64) -> f64 {
      *                   (peak_power)/angular_frequency*cos(t_start*angular_frequency)
      *     where t_start = 0, and t_end = start of night (1/2 day from start of morning)
      *
-     * 2. Find the max energy the rover could consume in that time
-     *     max_solar_energy_used = (max combined motor power * time for the same interval)
+     * 2. reshape this energy such that it represents a rectangle with height = saturated power,
+     *    and length = amount of time which we can travel at saturated power.
      *
-     * 3. convert that to a distance (d1)
-     * 4. calculated stored energy by subtracting max_solar_energy_used from total solar energy
-     * 5. convert stored energy to state of charge and calculate distance as was done in the fixed
-     *    capacity exercise (d2)
-     * 6. add the distances total distance = d1 + d2
-     *
+     * 3. calculate distance by multiplying this new time by the speed at saturated power.
      */
 
     let ang_freq = (std::f64::consts::PI * 2.0) / MARTIAN_DAY_S;
@@ -149,18 +144,7 @@ fn daily_distance_calc(rover: &rover::Rover, peak_irradiance: f64) -> f64 {
     let solar_energy = (-(peak_power) / ang_freq) * ((time1_end * ang_freq).cos())
         + ((peak_power) / ang_freq) * ((time1_start * ang_freq).cos());
 
-    let max_solar_energy_used = rover.saturated_power_get() * time_end_of_radiation;
+    let new_time = solar_energy / rover.saturated_power_get();
 
-    let dist_from_solar = {
-        let mean_power = max_solar_energy_used / time_end_of_radiation;
-        rover.power_to_speed(mean_power) * time_end_of_radiation / 1e6
-    };
-
-    /* allow this to be negative... we may subtract distance */
-    let stored = solar_energy - max_solar_energy_used;
-
-    let soc = (100.0 * stored) / (rover.batt_capacity_get() * 3600.0);
-    let dist_from_batt_stored = rover.max_distance_get(soc);
-
-    dist_from_solar + dist_from_batt_stored
+    (new_time * rover.power_to_speed(rover.saturated_power_get())) / 1e6
 }
